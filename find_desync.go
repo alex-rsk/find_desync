@@ -285,7 +285,8 @@ func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string) {
 	}
 
 	r, _ := regexp.Compile(`(?m)^(?:[\w\.]+,){4}([^,]+),(?:[\w\.]+,){5}([^,]+)`)
-
+	fmt.Println(outputVideo)
+	fmt.Println(outputAudio)
 	videoMatches := r.FindAllStringSubmatch(string(outputVideo), -1)
 	audioMatches := r.FindAllStringSubmatch(string(outputAudio), -1)
 
