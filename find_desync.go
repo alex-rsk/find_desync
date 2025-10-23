@@ -268,6 +268,7 @@ func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string) {
 	cmdAudioLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  \
 		-i "{%url}" -select_streams a  -show_frames -of csv=p=0 -read_intervals "%+{%time}" 2>/dev/null`, params)
 
+	fmt.Println("Debug audio cmd:" + cmdAudioLine)
 	cmdAudio := exec.Command("sh", "-c", cmdAudioLine)
 	outputAudio, erra := cmdAudio.CombinedOutput()
 
@@ -285,8 +286,7 @@ func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string) {
 	}
 
 	r, _ := regexp.Compile(`(?m)^(?:[\w\.]+,){4}([^,]+),(?:[\w\.]+,){5}([^,]+)`)
-	fmt.Println(outputVideo)
-	fmt.Println(outputAudio)
+
 	videoMatches := r.FindAllStringSubmatch(string(outputVideo), -1)
 	audioMatches := r.FindAllStringSubmatch(string(outputAudio), -1)
 
