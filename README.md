@@ -1,4 +1,5 @@
 **Repository Description**
+This software is under heavy development.
 
 🔍 **RTSP/Video Stream AV Sync Analyzer** – A diagnostic tool for detecting and analyzing audio-video synchronization issues in live or recorded video streams (e.g., RTSP, MP4, MKV).
 
