@@ -331,13 +331,11 @@ func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string) {
 	fullPackets := min(len(videoPackets), len(audioPackets))
 
 	if len(videoPackets) > len(audioPackets) {
-		color.Red("Not enough audio packets. Possible desync")
-		return
+		color.Yellow("Not enough audio packets. Possible desync")
 	}
 
 	if len(videoPackets) < len(audioPackets) {
-		color.Red("Not enough video packets. Possible desync")
-		return
+		color.Yellow("Not enough video packets. Possible desync")
 	}
 
 	if fullPackets < 2 {
