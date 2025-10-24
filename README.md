@@ -35,10 +35,11 @@ Usage: find_desync [-h|--help] -f|--file "<value>" [-p|--packets <integer>]
 ```
 Arguments:
 
-
+```
 *  -h  --help         Print help information
 *  -f  --file         File/stream to analyze
 *  -p  --packets      Number of packets  to analyze. Default: 10
 *  -t  --time         Time of the input to analyze. Default: 10
-*  -m  --mode         Mode to analyze: trackdiff, drift, firstpackets,startdiff
-*  -d  --direct       Analyze directly source (1), or analyzed saved slice before (0)
+*  -m  --method       Method to analyze: trackdiff, drift, firstpackets,startdiff
+*  -d  --direct       Analyze directly source (1), or analyze saved slice of the source (0)
+```

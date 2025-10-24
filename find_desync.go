@@ -671,8 +671,8 @@ func main() {
 	file := parser.String("f", "file", &argparse.Options{Required: true, Help: "File/stream to analyze"})
 	packets := parser.Int("p", "packets", &argparse.Options{Required: false, Help: "Number of packets  to analyze", Default: 10})
 	time := parser.Int("t", "time", &argparse.Options{Required: false, Help: "Time of the input to analyze", Default: 10})
-	mode := parser.String("m", "mode", &argparse.Options{Required: true, Help: "Mode to analyze: trackdiff, drift, firstpackets,startdiff", Default: "startdiff"})
-	rawSubject := parser.Int("s", "subject", &argparse.Options{Required: true, Help: "Analyze directly source, or save it's slice to the temp file before", Default: 0})
+	method := parser.String("m", "method", &argparse.Options{Required: true, Help: "Method to analyze: trackdiff, drift, firstpackets, startdiff", Default: "startdiff"})
+	rawSubject := parser.Int("d", "direct", &argparse.Options{Required: true, Help: "Analyze directly source, or analyze saved slice of the source", Default: 0})
 
 	err := parser.Parse(os.Args)
 
@@ -719,7 +719,7 @@ func main() {
 
 	analyzer := NewAnalyzer()
 	for _, camera := range cameras {
-		switch *mode {
+		switch *method {
 		case "trackdiff":
 			analyzer.TracksDiff(camera.Uri, *packets, camera.Apartment, directMode, useTime)
 			analyzer.CheckTrackDesync()
