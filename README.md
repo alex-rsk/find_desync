@@ -37,9 +37,9 @@ Arguments:
 
 ```
 *  -h  --help         Print help information
-*  -f  --file         File/stream to analyze
-*  -p  --packets      Number of packets  to analyze. Default: 10
-*  -t  --time         Time of the input to analyze. Default: 10
-*  -m  --method       Method to analyze: trackdiff, drift, firstpackets,startdiff
-*  -d  --direct       Analyze directly source (1), or analyze saved slice of the source (0)
+*  -f  --file         File/stream to analyze. No default value.
+*  -p  --packets      Number of packets  to analyze. Mutually exclusive with -t. No default value.
+*  -t  --time         Time of the input to analyze. Mutually exclusive with -p. No default value.
+*  -m  --method       Method to analyze: trackdiff, drift, firstpackets,startdiff. Default is "startdiff".
+*  -d  --direct       Analyze directly source (1), or analyze saved slice of the source (0). Default is 0.
 ```

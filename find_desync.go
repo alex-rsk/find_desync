@@ -669,8 +669,8 @@ func main() {
 	parser := argparse.NewParser("find_desync", "An attempt to programmatically detect audio/video desynchronization")
 
 	file := parser.String("f", "file", &argparse.Options{Required: true, Help: "File/stream to analyze"})
-	packets := parser.Int("p", "packets", &argparse.Options{Required: false, Help: "Number of packets  to analyze", Default: 10})
-	time := parser.Int("t", "time", &argparse.Options{Required: false, Help: "Time of the input to analyze", Default: 10})
+	packets := parser.Int("p", "packets", &argparse.Options{Required: false, Help: "Number of packets  to analyze. Mutually exclusive with -t"})
+	time := parser.Int("t", "time", &argparse.Options{Required: false, Help: "Time of the input to analyze.  Mutually exclusive with -p"})
 	method := parser.String("m", "method", &argparse.Options{Required: true, Help: "Method to analyze: trackdiff, drift, firstpackets, startdiff", Default: "startdiff"})
 	rawSubject := parser.Int("d", "direct", &argparse.Options{Required: true, Help: "Analyze directly source, or analyze saved slice of the source", Default: 0})
 
