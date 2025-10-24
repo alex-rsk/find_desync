@@ -278,7 +278,7 @@ func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string, direct bool,
 	   -i "{%url}" -select_streams v  -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
 
 	cmdAudioLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  \
-		-i "{%url}" -select_streams a  -show_frames -of csv=p=0 -read_intervals "%+{%readIntervals}" 2>/dev/null`, params)
+		-i "{%url}" -select_streams a  -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
 
 	fmt.Println("Debug audio cmd:" + cmdAudioLine)
 	cmdAudio := exec.Command("sh", "-c", cmdAudioLine)
@@ -646,8 +646,8 @@ func (a *Analyzer) SimpleDiff(url string, time int, apart string, direct bool) b
 		panic(err)
 	}
 
-	fmt.Printf("First video packet: %.2f", videoFirstPts)
-	fmt.Printf("First audio packet: %.2f", audioFirstPts)
+	fmt.Printf("First video packet: %.2f \n", videoFirstPts)
+	fmt.Printf("First audio packet: %.2f \n", audioFirstPts)
 
 	return math.Abs(videoFirstPts-audioFirstPts) <= 1
 
@@ -668,10 +668,13 @@ func main() {
 
 	parser := argparse.NewParser("find_desync", "An attempt to programmatically detect audio/video desynchronization")
 
-	file := parser.String("f", "file", &argparse.Options{Required: true, Help: "File/stream to analyze"})
+	cameras := []*Camera{}
+
+	file := parser.String("f", "file", &argparse.Options{Required: false, Help: "File/stream to analyze"})
+	csvFile := parser.String("c", "CSV file", &argparse.Options{Required: false, Help: "File/stream to analyze"})
 	packets := parser.Int("p", "packets", &argparse.Options{Required: false, Help: "Number of packets  to analyze. Mutually exclusive with -t"})
 	time := parser.Int("t", "time", &argparse.Options{Required: false, Help: "Time of the input to analyze.  Mutually exclusive with -p"})
-	method := parser.String("m", "method", &argparse.Options{Required: true, Help: "Method to analyze: trackdiff, drift, firstpackets, startdiff", Default: "startdiff"})
+	method := parser.String("m", "method", &argparse.Options{Required: false, Help: "Method to analyze: trackdiff, drift, firstpackets, startdiff", Default: "startdiff"})
 	rawSubject := parser.Int("d", "direct", &argparse.Options{Required: true, Help: "Analyze directly source, or analyze saved slice of the source", Default: 0})
 
 	err := parser.Parse(os.Args)
@@ -684,27 +687,30 @@ func main() {
 		fmt.Errorf("specify either time or packets")
 	}
 
-	fileHandle, err := os.OpenFile(*file, os.O_RDWR, os.ModePerm)
+	if *csvFile != "" {
+		fileHandle, err := os.OpenFile(*file, os.O_RDWR, os.ModePerm)
 
-	if err != nil {
-		panic(err)
+		if err != nil {
+			panic(err)
+		}
+
+		gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
+
+			return gocsv.LazyCSVReader(in)
+		})
+
+		errHandler := func(err *csv.ParseError) bool {
+			fmt.Println(err)
+			return true
+		}
+
+		if err := gocsv.UnmarshalFileWithErrorHandler(fileHandle, errHandler, &cameras); err != nil {
+			panic(err)
+		}
+	} else {
+		cameras = append(cameras, &Camera{*file, *file, ""})
 	}
 
-	cameras := []*Camera{}
-
-	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
-
-		return gocsv.LazyCSVReader(in)
-	})
-
-	errHandler := func(err *csv.ParseError) bool {
-		fmt.Println(err)
-		return true
-	}
-
-	if err := gocsv.UnmarshalFileWithErrorHandler(fileHandle, errHandler, &cameras); err != nil {
-		panic(err)
-	}
 	directMode := false
 
 	if *rawSubject == 1 {
