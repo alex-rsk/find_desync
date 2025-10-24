@@ -27,21 +27,18 @@ This Go-based utility helps identify:
 ###  Dependencies
 - `ffmpeg` and `ffprobe` (must be in `$PATH`)
 - Go 1.20+
-
+```
 Usage: find_desync [-h|--help] -f|--file "<value>" [-p|--packets <integer>]
                    [-t|--time <integer>] -m|--mode "<value>" -s|--subject
                    <integer>
 
- 
+```
 Arguments:
 
-  -h  --help     Print help information
-  -f  --file     File/stream to analyze
-  -p  --packets  Number of packets  to analyze. Default: 10
-  -t  --time     Time of the input to analyze. Default: 10
-  -m  --mode     Mode to analyze: trackdiff, drift, firstpackets,startdiff
-  -s  --subject  Analyze directly source, or save it's slice to the temp file
-                 before
 
-
-Keep your streams in perfect sync! 🎥🔊
+*  -h  --help     Print help information
+*  -f  --file     File/stream to analyze
+*  -p  --packets  Number of packets  to analyze. Default: 10
+*  -t  --time     Time of the input to analyze. Default: 10
+*  -m  --mode     Mode to analyze: trackdiff, drift, firstpackets,startdiff
+*  -s  --subject  Analyze directly source, or save it's slice to the temp file before
