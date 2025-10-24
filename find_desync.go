@@ -671,7 +671,7 @@ func main() {
 	cameras := []*Camera{}
 
 	file := parser.String("f", "file", &argparse.Options{Required: false, Help: "File/stream to analyze"})
-	csvFile := parser.String("c", "CSV file", &argparse.Options{Required: false, Help: "File/stream to analyze"})
+	csvFile := parser.String("c", "csv", &argparse.Options{Required: false, Help: "File/stream to analyze"})
 	packets := parser.Int("p", "packets", &argparse.Options{Required: false, Help: "Number of packets  to analyze. Mutually exclusive with -t"})
 	time := parser.Int("t", "time", &argparse.Options{Required: false, Help: "Time of the input to analyze.  Mutually exclusive with -p"})
 	method := parser.String("m", "method", &argparse.Options{Required: false, Help: "Method to analyze: trackdiff, drift, firstpackets, startdiff", Default: "startdiff"})
