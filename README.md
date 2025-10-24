@@ -38,6 +38,9 @@ Arguments:
 ```
 *  -h  --help         Print help information
 *  -f  --file         File/stream to analyze. No default value.
+*  -с  --csv          Annotated CSV file which enumerates sources in format, example :
+                      name,uri,apart
+                      "Cam1", "rtsp://...", "Apart 1"
 *  -p  --packets      Number of packets  to analyze. Mutually exclusive with -t. No default value.
 *  -t  --time         Time of the input to analyze. Mutually exclusive with -p. No default value.
 *  -m  --method       Method to analyze: trackdiff, drift, firstpackets,startdiff. Default is "startdiff".
