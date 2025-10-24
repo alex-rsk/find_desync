@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/akamensky/argparse"
 	"github.com/fatih/color"
 	"github.com/gocarina/gocsv"
 	"github.com/rodaine/table"
@@ -249,24 +250,35 @@ func (a *Analyzer) StartTimeDiff(url string, apart string) {
 	}
 }
 
-func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string) {
+func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string, direct bool, useTime bool) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 	videoPackets := []PacketInfo{}
 	audioPackets := []PacketInfo{}
 
-	sourceFile := recordTempFile(uri, time, false)
+	var sourceFile string
+
+	if !direct {
+		sourceFile = recordTempFile(uri, time, false)
+	} else {
+		sourceFile = uri
+	}
+
+	readIntervals := "%+#" + strconv.Itoa(time)
+	if useTime {
+		readIntervals = "%+" + strconv.Itoa(time)
+	}
 
 	params := map[string]string{
-		"url":  sourceFile,
-		"time": strconv.Itoa(time),
+		"url":           sourceFile,
+		"readIntervals": readIntervals,
 	}
 
 	cmdVideoLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  \
-	   -i "{%url}" -select_streams v  -show_frames -of csv=p=0 -read_intervals "%+{%time}" 2>/dev/null`, params)
+	   -i "{%url}" -select_streams v  -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
 
 	cmdAudioLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  \
-		-i "{%url}" -select_streams a  -show_frames -of csv=p=0 -read_intervals "%+{%time}" 2>/dev/null`, params)
+		-i "{%url}" -select_streams a  -show_frames -of csv=p=0 -read_intervals "%+{%readIntervals}" 2>/dev/null`, params)
 
 	fmt.Println("Debug audio cmd:" + cmdAudioLine)
 	cmdAudio := exec.Command("sh", "-c", cmdAudioLine)
@@ -438,23 +450,36 @@ func (a *Analyzer) CheckPTSDiffDrift() {
 	}
 }
 
-func (a *Analyzer) TracksDiff(uri string, time int, apart string) {
+func (a *Analyzer) TracksDiff(uri string, time int, apart string, direct bool, useTime bool) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 	videoPackets := []PacketInfo{}
 	audioPackets := []PacketInfo{}
 
-	sourceFile := recordTempFile(uri, time, false)
+	var sourceFile string
 
-	params := map[string]string{
-		"url":  sourceFile,
-		"time": strconv.Itoa(time),
+	if !direct {
+		sourceFile = recordTempFile(uri, time, false)
+	} else {
+		sourceFile = uri
 	}
 
-	cmdVideoLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams v  -show_frames -of csv=p=0 -read_intervals "%+{%time}" 2>/dev/null`, params)
+	readIntervals := "%+#" + strconv.Itoa(time)
+	if useTime {
+		readIntervals = "%+" + strconv.Itoa(time)
+	}
 
-	cmdAudioLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams a  -show_frames -of csv=p=0 -read_intervals "%+{%time}" 2>/dev/null`, params)
+	params := map[string]string{
+		"url":           sourceFile,
+		"readIntervals": readIntervals,
+	}
+
+	cmdVideoLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams v 
+		 -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
+
+	cmdAudioLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams a 
+	     -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
 
 	fmt.Println("Video command:")
 	fmt.Println(cmdVideoLine)
@@ -641,15 +666,25 @@ func (a *Analyzer) CheckTrackDesync() {
 
 func main() {
 
-	file := os.Args[1]
-	packets, err := strconv.Atoi(os.Args[2])
-	mode := os.Args[3]
+	parser := argparse.NewParser("find_desync", "An attempt to programmatically detect audio/video desynchronization")
+
+	file := parser.String("f", "file", &argparse.Options{Required: true, Help: "File/stream to analyze"})
+	packets := parser.Int("p", "packets", &argparse.Options{Required: false, Help: "Number of packets  to analyze", Default: 10})
+	time := parser.Int("t", "time", &argparse.Options{Required: false, Help: "Time of the input to analyze", Default: 10})
+	mode := parser.String("m", "mode", &argparse.Options{Required: true, Help: "Mode to analyze: trackdiff, drift, firstpackets,startdiff", Default: "startdiff"})
+	rawSubject := parser.Int("s", "subject", &argparse.Options{Required: true, Help: "Analyze directly source, or save it's slice to the temp file before", Default: 0})
+
+	err := parser.Parse(os.Args)
 
 	if err != nil {
-		panic(err)
+		fmt.Print(parser.Usage(err))
 	}
 
-	fileHandle, err := os.OpenFile(file, os.O_RDWR, os.ModePerm)
+	if time == nil && packets == nil {
+		fmt.Errorf("specify either time or packets")
+	}
+
+	fileHandle, err := os.OpenFile(*file, os.O_RDWR, os.ModePerm)
 
 	if err != nil {
 		panic(err)
@@ -670,19 +705,30 @@ func main() {
 	if err := gocsv.UnmarshalFileWithErrorHandler(fileHandle, errHandler, &cameras); err != nil {
 		panic(err)
 	}
+	directMode := false
+
+	if *rawSubject == 1 {
+		directMode = true
+	}
+
+	useTime := false
+
+	if time != nil {
+		useTime = true
+	}
 
 	analyzer := NewAnalyzer()
 	for _, camera := range cameras {
-		switch mode {
+		switch *mode {
 		case "trackdiff":
-			analyzer.TracksDiff(camera.Uri, packets, camera.Apartment)
+			analyzer.TracksDiff(camera.Uri, *packets, camera.Apartment, directMode, useTime)
 			analyzer.CheckTrackDesync()
 		case "drift":
-			analyzer.PTSDiffDrift(camera.Uri, packets, camera.Apartment)
+			analyzer.PTSDiffDrift(camera.Uri, *packets, camera.Apartment, directMode, useTime)
 			analyzer.CheckPTSDiffDrift()
 		case "firstpackets":
 			fmt.Println("Check in record")
-			if analyzer.SimpleDiff(camera.Uri, packets, camera.Apartment, false) {
+			if analyzer.SimpleDiff(camera.Uri, *packets, camera.Apartment, directMode) {
 				color.Green("\nTracks in sync :" + camera.Apartment + " " + camera.Uri)
 			} else {
 				color.Red("\nTracks are desynced: " + camera.Apartment + " " + camera.Uri)
