@@ -571,7 +571,7 @@ func (a *Analyzer) TracksDiff(uri string, time int, apart string, direct bool, u
 
 	tbl.Print()
 
-	os.Remove(sourceFile)
+	defer os.Remove(sourceFile)
 
 }
 
@@ -717,20 +717,22 @@ func main() {
 		directMode = true
 	}
 
+	var count int = 0
 	useTime := false
-
+	count = *packets
 	if time != nil {
 		useTime = true
+		count = *time
 	}
 
 	analyzer := NewAnalyzer()
 	for _, camera := range cameras {
 		switch *method {
 		case "trackdiff":
-			analyzer.TracksDiff(camera.Uri, *packets, camera.Apartment, directMode, useTime)
+			analyzer.TracksDiff(camera.Uri, count, camera.Apartment, directMode, useTime)
 			analyzer.CheckTrackDesync()
 		case "drift":
-			analyzer.PTSDiffDrift(camera.Uri, *packets, camera.Apartment, directMode, useTime)
+			analyzer.PTSDiffDrift(camera.Uri, count, camera.Apartment, directMode, useTime)
 			analyzer.CheckPTSDiffDrift()
 		case "firstpackets":
 			fmt.Println("Check in record")
