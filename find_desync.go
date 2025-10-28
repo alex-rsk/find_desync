@@ -475,6 +475,129 @@ func (a *Analyzer) TracksDiff(uri string, time int, apart string, direct bool, u
 		"readIntervals": readIntervals,
 	}
 
+	cmdVideoLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams v -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
+
+	cmdAudioLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams a -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
+
+	fmt.Println("Video command:")
+	fmt.Println(cmdVideoLine)
+
+	fmt.Println("Audio command:")
+	fmt.Println(cmdAudioLine)
+
+	cmdAudio := exec.Command("sh", "-c", cmdAudioLine)
+	outputAudio, erra := cmdAudio.CombinedOutput()
+
+	cmdVideo := exec.Command("sh", "-c", cmdVideoLine)
+	outputVideo, errv := cmdVideo.CombinedOutput()
+
+	if erra != nil {
+		logger.Error(fmt.Sprintf("Error audio command : %v", erra))
+		logger.Error(fmt.Sprintf("Audio packets: %s", string(outputAudio)))
+	}
+
+	if errv != nil {
+		logger.Error(fmt.Sprintf("Error video command: %v", errv))
+		logger.Error(fmt.Sprintf("Video : %s", string(outputVideo)))
+	}
+
+	r, _ := regexp.Compile(`(?m)^(?:[\w\.]+,){4}([^,]+),(?:[\w\.]+,){5}([^,]+)`)
+
+	videoMatches := r.FindAllStringSubmatch(string(outputVideo), -1)
+	audioMatches := r.FindAllStringSubmatch(string(outputAudio), -1)
+	fmt.Printf("Found %d video packets and %d audio packets\n", len(videoMatches), len(audioMatches))
+	for i, match := range videoMatches {
+		ptsTime, err := strconv.ParseFloat(match[1], 64)
+		if err != nil {
+			fmt.Printf("Cannot parse pts_time: %v", err)
+			continue
+		}
+
+		dur, err := strconv.ParseFloat(match[2], 64)
+		if err != nil {
+			fmt.Printf("Cannot parse duration: %v", err)
+			continue
+		}
+
+		videoPackets = append(videoPackets, PacketInfo{
+			number:        i + 1,
+			pts_time:      ptsTime,
+			duration_time: dur,
+		})
+	}
+
+	for i, match := range audioMatches {
+		ptsTime, err := strconv.ParseFloat(match[1], 64)
+		if err != nil {
+			fmt.Printf("Cannot parse pts_time: %v", err)
+			continue
+		}
+
+		dur, err := strconv.ParseFloat(match[2], 64)
+		if err != nil {
+			fmt.Printf("Cannot parse duration: %v", err)
+			continue
+		}
+
+		audioPackets = append(audioPackets, PacketInfo{
+			number:        i + 1,
+			pts_time:      ptsTime,
+			duration_time: dur,
+		})
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	tbl := table.New("#", "Video PTS time", "Video duration", "Audio PTS time", "Audio duration", "diff")
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	fullPackets := min(len(videoPackets), len(audioPackets))
+
+	diffInfo := NewDiffInfo(apart, uri, 0)
+
+	for i := 0; i < fullPackets; i++ {
+		diff := math.Abs(videoPackets[i].pts_time - audioPackets[i].pts_time)
+		diffInfo.Diff += diff
+		tbl.AddRow(videoPackets[i].number, videoPackets[i].pts_time, videoPackets[i].duration_time,
+			audioPackets[i].pts_time, audioPackets[i].duration_time, diff)
+	}
+
+	diffInfo.Diff /= float64(fullPackets)
+
+	a.apartDiffs = append(a.apartDiffs, diffInfo)
+
+	tbl.Print()
+
+	defer os.Remove(sourceFile)
+
+}
+
+func (a *Analyzer) TracksDrift(uri string, time int, apart string, direct bool, useTime bool) {
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+
+	videoPackets := []PacketInfo{}
+	audioPackets := []PacketInfo{}
+
+	var sourceFile string
+
+	if !direct {
+		sourceFile = recordTempFile(uri, time, false)
+	} else {
+		sourceFile = uri
+	}
+
+	readIntervals := "%+#" + strconv.Itoa(time)
+	if useTime {
+		readIntervals = "%+" + strconv.Itoa(time)
+	}
+
+	params := map[string]string{
+		"url":           sourceFile,
+		"readIntervals": readIntervals,
+	}
+
 	cmdVideoLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams v 
 		 -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
 
@@ -553,6 +676,9 @@ func (a *Analyzer) TracksDiff(uri string, time int, apart string, direct bool, u
 
 	tbl := table.New("#", "Video PTS time", "Video duration", "Audio PTS time", "Audio duration", "diff")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	fmt.Printf("Video packets: %d \t", len(videoPackets))
+	fmt.Printf("Audio packets: %d \n", len(videoPackets))
 
 	fullPackets := min(len(videoPackets), len(audioPackets))
 
@@ -744,6 +870,8 @@ func main() {
 		case "startdiff":
 			fmt.Println("Comparison of the first packets")
 			analyzer.StartTimeDiff(camera.Uri, camera.Apartment)
+		case "trackdrift":
+			fmt.Println("Detect growing difference between auido and video streams")
 		}
 	}
 }
