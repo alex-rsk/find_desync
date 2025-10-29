@@ -95,7 +95,7 @@ func recordTempFile(url string, length int, align bool) string {
 	fmt.Println(filename)
 	rtspOpt := ""
 	videoFilter := "null"
-	audioFilter := ""
+	audioFilter := "null"
 
 	if align {
 		audioFilter = audioFilter + ",asetpts=PTS-STARTPTS"
