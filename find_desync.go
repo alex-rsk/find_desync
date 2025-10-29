@@ -481,9 +481,15 @@ func (a *Analyzer) TracksDiff(uri string, time int, apart string, direct bool, u
 		"readIntervals": readIntervals,
 	}
 
-	cmdVideoLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams v -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
+	var rtspOpt string = ""
 
-	cmdAudioLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams a -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
+	if strings.Contains(uri, "rtsp") {
+		rtspOpt = "-rtsp_transport tcp "
+	}
+
+	cmdVideoLine := fillTemplate(`ffprobe  `+rtspOpt+` -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams v -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
+
+	cmdAudioLine := fillTemplate(`ffprobe `+rtspOpt+` -v quiet -analyzeduration 5M -probesize 5M  -i "{%url}" -select_streams a -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
 
 	fmt.Println("Video command:")
 	fmt.Println(cmdVideoLine)
