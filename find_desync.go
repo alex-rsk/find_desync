@@ -95,7 +95,7 @@ func recordTempFile(url string, length int, align bool) string {
 	fmt.Println(filename)
 	rtspOpt := ""
 	videoFilter := "null"
-	audioFilter := "asetnsamples=320"
+	audioFilter := "asetnsamples=640"
 
 	if align {
 		audioFilter = audioFilter + ",asetpts=PTS-STARTPTS"
@@ -804,6 +804,7 @@ func main() {
 	method := parser.String("m", "method", &argparse.Options{Required: false, Help: "Method to analyze: trackdiff, drift, firstpackets, startdiff", Default: "startdiff"})
 	stream := parser.String("s", "string", &argparse.Options{Required: true, Help: "Stream to analyze ( for `drift` method ),'a','v','0:v','0:a'", Default: "a"})
 	rawSubject := parser.Int("d", "direct", &argparse.Options{Required: true, Help: "Analyze directly source, or analyze saved slice of the source", Default: 0})
+
 	err := parser.Parse(os.Args)
 
 	if err != nil {
