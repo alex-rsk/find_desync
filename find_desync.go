@@ -250,7 +250,7 @@ func (a *Analyzer) StartTimeDiff(url string, apart string) {
 	}
 }
 
-func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string, direct bool, useTime bool) {
+func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string, direct bool, useTime bool, track string) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 	videoPackets := []PacketInfo{}
@@ -272,13 +272,14 @@ func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string, direct bool,
 	params := map[string]string{
 		"url":           sourceFile,
 		"readIntervals": readIntervals,
+		"track":         track,
 	}
 
 	cmdVideoLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  \
-	   -i "{%url}" -select_streams v  -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
+	   -i "{%url}" -select_streams {%track}  -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
 
 	cmdAudioLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  \
-		-i "{%url}" -select_streams a  -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
+		-i "{%url}" -select_streams {%track}  -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
 
 	fmt.Println("Debug audio cmd:" + cmdAudioLine)
 	cmdAudio := exec.Command("sh", "-c", cmdAudioLine)
@@ -801,16 +802,18 @@ func main() {
 	packets := parser.Int("p", "packets", &argparse.Options{Required: false, Help: "Number of packets  to analyze. Mutually exclusive with -t"})
 	time := parser.Int("t", "time", &argparse.Options{Required: false, Help: "Time of the input to analyze.  Mutually exclusive with -p"})
 	method := parser.String("m", "method", &argparse.Options{Required: false, Help: "Method to analyze: trackdiff, drift, firstpackets, startdiff", Default: "startdiff"})
+	stream := parser.String("s", "string", &argparse.Options{Required: true, Help: "Stream to analyze ( for `drift` method ),'a','v','0:v','0:a'", Default: "a"})
 	rawSubject := parser.Int("d", "direct", &argparse.Options{Required: true, Help: "Analyze directly source, or analyze saved slice of the source", Default: 0})
-
 	err := parser.Parse(os.Args)
 
 	if err != nil {
 		fmt.Print(parser.Usage(err))
+		return
 	}
 
 	if time == nil && packets == nil {
 		fmt.Errorf("specify either time or packets")
+		return
 	}
 
 	if *csvFile != "" {
@@ -858,7 +861,7 @@ func main() {
 			analyzer.TracksDiff(camera.Uri, count, camera.Apartment, directMode, useTime)
 			analyzer.CheckTrackDesync()
 		case "drift":
-			analyzer.PTSDiffDrift(camera.Uri, count, camera.Apartment, directMode, useTime)
+			analyzer.PTSDiffDrift(camera.Uri, count, camera.Apartment, directMode, useTime, *stream)
 			analyzer.CheckPTSDiffDrift()
 		case "firstpackets":
 			fmt.Println("Check in record")
