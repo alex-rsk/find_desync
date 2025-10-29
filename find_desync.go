@@ -95,7 +95,7 @@ func recordTempFile(url string, length int, align bool) string {
 	fmt.Println(filename)
 	rtspOpt := ""
 	videoFilter := "null"
-	audioFilter := "null"
+	audioFilter := "asetnsamples=320"
 
 	if align {
 		audioFilter = audioFilter + ",asetpts=PTS-STARTPTS"
@@ -106,8 +106,7 @@ func recordTempFile(url string, length int, align bool) string {
 		rtspOpt = "-rtsp_transport tcp "
 	}
 
-	cmdLine := "ffmpeg " + rtspOpt + "-i " + url + "  -c:v libx264 -c:a pcm_mulaw -vf '" + videoFilter + "' -af '" +
-		audioFilter + "' -t " + strLength + " " + filename
+	cmdLine := "ffmpeg " + rtspOpt + "-i " + url + "  -c:v libx264 -c:a pcm_mulaw -vf '" + videoFilter + "' -af '" + audioFilter + "' -t " + strLength + " " + filename
 
 	fmt.Println(cmdLine)
 
@@ -275,10 +274,16 @@ func (a *Analyzer) PTSDiffDrift(uri string, time int, apart string, direct bool,
 		"track":         track,
 	}
 
-	cmdVideoLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  \
+	var rtspOpt string = ""
+
+	if strings.Contains(uri, "rtsp") {
+		rtspOpt = "-rtsp_transport tcp "
+	}
+
+	cmdVideoLine := fillTemplate(`ffprobe `+rtspOpt+` -v quiet -analyzeduration 5M -probesize 5M  \
 	   -i "{%url}" -select_streams {%track}  -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
 
-	cmdAudioLine := fillTemplate(`ffprobe -v quiet -analyzeduration 5M -probesize 5M  \
+	cmdAudioLine := fillTemplate(`ffprobe `+rtspOpt+` -v quiet -analyzeduration 5M -probesize 5M  \
 		-i "{%url}" -select_streams {%track}  -show_frames -of csv=p=0 -read_intervals "{%readIntervals}" 2>/dev/null`, params)
 
 	fmt.Println("Debug audio cmd:" + cmdAudioLine)
